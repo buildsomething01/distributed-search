@@ -1,0 +1,64 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:3.8.0
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms768m -Xmx768m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 6
+    ports:
+      - "9092:9092"
+
+  indexer:
+    build: .
+    depends_on:
+      - opensearch
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: indexer,local
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OPENSEARCH_URL: http://opensearch:9200
+    restart: on-failure
+
+  api:
+    build: .
+    depends_on:
+      - redis
+      - kafka
+      - opensearch
+      - indexer
+    environment:
+      SPRING_PROFILES_ACTIVE: api,local
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      OPENSEARCH_URL: http://opensearch:9200
+    ports:
+      - "8080:8080"
+    restart: on-failure
+
+volumes:
+  opensearch-data:

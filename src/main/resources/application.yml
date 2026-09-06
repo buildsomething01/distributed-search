@@ -1,0 +1,67 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: document-search
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 50
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.example.search.model
+        spring.json.value.default.type: com.example.search.model.DocumentEvent
+    listener:
+      ack-mode: batch
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  security:
+    enabled: ${SECURITY_ENABLED:true}
+    tenant-claim: ${TENANT_CLAIM:tenant_id}
+  rate-limit:
+    requests-per-minute: ${TENANT_REQUESTS_PER_MINUTE:60000}
+  kafka:
+    document-topic: ${DOCUMENT_TOPIC:document-index-events}
+    indexer-group: ${INDEXER_GROUP:document-indexers}
+  embedding:
+    provider: ${EMBEDDING_PROVIDER:local}
+    project-id: ${EMBEDDING_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:}}
+    location: ${EMBEDDING_LOCATION:us-central1}
+    model: ${EMBEDDING_MODEL:gemini-embedding-001}
+    dimension: ${EMBEDDING_DIMENSION:768}
+    max-chars: ${EMBEDDING_MAX_CHARS:12000}
+  opensearch:
+    url: ${OPENSEARCH_URL:http://localhost:9200}
+    username: ${OPENSEARCH_USERNAME:}
+    password: ${OPENSEARCH_PASSWORD:}
+    index: ${OPENSEARCH_INDEX:documents-v2}
+    rrf-pipeline: ${OPENSEARCH_RRF_PIPELINE:document-search-rrf}
+    primary-shards: ${OPENSEARCH_PRIMARY_SHARDS:4}
+    replicas: ${OPENSEARCH_REPLICAS:1}
+    vector-candidates: ${OPENSEARCH_VECTOR_CANDIDATES:50}
+    search-timeout: ${OPENSEARCH_SEARCH_TIMEOUT:320ms}

@@ -1,0 +1,8 @@
+app:
+  security:
+    enabled: false
+  embedding:
+    provider: local
+    dimension: 64
+  opensearch:
+    replicas: 0

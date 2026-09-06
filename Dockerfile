@@ -1,0 +1,12 @@
+FROM gradle:8.14.3-jdk21 AS build
+WORKDIR /workspace
+COPY settings.gradle build.gradle ./
+COPY src src
+RUN gradle clean test bootJar --no-daemon
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /workspace/build/libs/*.jar app.jar
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
